@@ -573,15 +573,19 @@ class TcontrolApp(ctk.CTk):
         """Appelé par UnlockDialog. En ligne : vérifie sur le site ;
         hors ligne : vérifie contre les admins mémorisés."""
         if self.cfg.configured:
-            if self.sync.auth(user, password):
+            ok, err = self.sync.auth(user, password)
+            if ok:
                 self._grant_admin(user, password)
                 return True, ""
+            if err.startswith("Identifiants incorrects"):
+                return False, err
+            # erreur technique (serveur/SSL/réseau) : on tente le cache local
+            if verify_admin(user, password, self.app_state.cached_admins):
+                self._grant_admin(user, password)
+                return True, "(hors ligne — vérifié localement)"
             if self.app_state.cached_admins:
-                # pas de compte serveur mais cache dispo → on tente le cache
-                if verify_admin(user, password, self.app_state.cached_admins):
-                    self._grant_admin(user, password)
-                    return True, "(hors ligne — vérifié localement) "
-            return False, "Identifiants incorrects ou serveur injoignable."
+                return False, "Serveur injoignable, identifiants absents du cache local."
+            return False, err or "Serveur injoignable."
         if verify_admin(user, password, self.app_state.cached_admins):
             self._grant_admin(user, password)
             return True, ""
