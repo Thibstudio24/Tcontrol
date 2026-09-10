@@ -1,0 +1,19 @@
+# ─── Secrets : ne JAMAIS committer les identifiants de la base ───
+site/api/config_db.php
+
+# ─── Python ───
+__pycache__/
+*.py[cod]
+
+# ─── Build PyInstaller ───
+app/dist/
+app/build/
+*.spec
+
+# ─── Config & cache locaux de l'app (spécifiques à chaque PC) ───
+config.json
+cache.json
+
+# ─── Divers ───
+.DS_Store
+Thumbs.db
