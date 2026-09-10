@@ -173,7 +173,7 @@ class AdminPanel(ctk.CTkToplevel):
     def _fill_running(self, procs):
         for w in self.frame_running.winfo_children():
             w.destroy()
-        blocked = set(self.app.state.processes)
+        blocked = set(self.app.app_state.processes)
         for p in procs:
             row = ctk.CTkFrame(self.frame_running, fg_color="transparent")
             row.pack(fill="x", pady=1, padx=4)
@@ -192,7 +192,7 @@ class AdminPanel(ctk.CTkToplevel):
     def _refresh_blocked_list(self):
         for w in self.frame_blocked.winfo_children():
             w.destroy()
-        procs = self.app.state.processes
+        procs = self.app.app_state.processes
         if not procs:
             ctk.CTkLabel(self.frame_blocked, text="Aucun jeu bloqué pour l'instant.",
                          font=FONT_SMALL, text_color="gray").pack(pady=8)
@@ -313,7 +313,7 @@ class AdminPanel(ctk.CTkToplevel):
                       command=self._save_config)\
             .grid(row=3, column=1, sticky="w", padx=8, pady=8)
 
-        st = self.app.state
+        st = self.app.app_state
         ctk.CTkLabel(tab, text="Paramètres actifs (modifiables sur le site)",
                      font=FONT_H2).grid(row=4, column=0, columnspan=2,
                                         sticky="w", padx=8, pady=(16, 4))
@@ -358,7 +358,7 @@ class AdminPanel(ctk.CTkToplevel):
             self.after(3000, self._check_first_sync)
 
     def _check_first_sync(self):
-        if self.app.state.last_sync_ok:
+        if self.app.app_state.last_sync_ok:
             messagebox.showinfo(
                 APP_NAME,
                 "✅ Connexion au site réussie !\n\n"
@@ -397,10 +397,10 @@ class TcontrolApp(ctk.CTk):
 
         # --- état & services
         self.cfg = Config.load()
-        self.state = State.load()
+        self.app_state = State.load()
         self.sync = SyncClient(self.cfg)
         self.events: "queue.Queue" = queue.Queue()
-        self.monitor = Monitor(self.cfg, self.state, self.sync, self.events)
+        self.monitor = Monitor(self.cfg, self.app_state, self.sync, self.events)
         self.user, self.machine = get_identity()
         self.admin_user = None
         self.admin_pass = None
@@ -484,7 +484,7 @@ class TcontrolApp(ctk.CTk):
 
     # ------------------------------------------------------------------ rafraîchissement
     def _refresh_clock(self):
-        st = self.state
+        st = self.app_state
         remaining = st.remaining()
         used = st.local_used()
         limit = st.limit or 0
@@ -517,14 +517,14 @@ class TcontrolApp(ctk.CTk):
     def _refresh_watchlist(self):
         for w in self.frame_watch.winfo_children():
             w.destroy()
-        procs = self.state.processes
+        procs = self.app_state.processes
         if not procs:
             ctk.CTkLabel(self.frame_watch,
                          text="Aucun jeu surveillé.\nL'admin peut en ajouter\nvia le bouton 🔑.",
                          font=FONT_SMALL, text_color="gray",
                          justify="left").pack(anchor="w", pady=6, padx=6)
         for name in sorted(procs):
-            running = name == self.state.current_game
+            running = name == self.app_state.current_game
             ctk.CTkLabel(self.frame_watch,
                          text=("🔴 " if running else "⚫ ") + name,
                          font=FONT_BODY).pack(anchor="w", padx=8, pady=2)
@@ -559,7 +559,7 @@ class TcontrolApp(ctk.CTk):
         # force un rafraîchissement immédiat de la liste (la boucle le fait sinon)
         for w in self.frame_watch.winfo_children():
             w.destroy()
-        procs = self.state.processes
+        procs = self.app_state.processes
         for name in sorted(procs):
             ctk.CTkLabel(self.frame_watch, text="⚫ " + name,
                          font=FONT_BODY).pack(anchor="w", padx=8, pady=2)
@@ -576,29 +576,29 @@ class TcontrolApp(ctk.CTk):
             if self.sync.auth(user, password):
                 self._grant_admin(user, password)
                 return True, ""
-            if self.state.cached_admins:
+            if self.app_state.cached_admins:
                 # pas de compte serveur mais cache dispo → on tente le cache
-                if verify_admin(user, password, self.state.cached_admins):
+                if verify_admin(user, password, self.app_state.cached_admins):
                     self._grant_admin(user, password)
                     return True, "(hors ligne — vérifié localement) "
             return False, "Identifiants incorrects ou serveur injoignable."
-        if verify_admin(user, password, self.state.cached_admins):
+        if verify_admin(user, password, self.app_state.cached_admins):
             self._grant_admin(user, password)
             return True, ""
         return False, "Hors ligne et aucun admin mémorisé sur ce PC."
 
     def _grant_admin(self, user, password):
         self.admin_user, self.admin_pass = user, password
-        self.state.cached_admins = remember_admin(user, password,
-                                                  self.state.cached_admins)
-        self.state.save()
+        self.app_state.cached_admins = remember_admin(user, password,
+                                                  self.app_state.cached_admins)
+        self.app_state.save()
         self.after(100, self._open_admin_panel)
 
     def open_admin(self):
         if self.is_admin:
             self._open_admin_panel()
             return
-        if not self.cfg.configured and not self.state.cached_admins:
+        if not self.cfg.configured and not self.app_state.cached_admins:
             # Toute première installation : on ne peut vérifier d'identifiants
             # nulle part → panneau en mode "configuration seule".
             self._open_admin_panel()
@@ -622,8 +622,8 @@ class TcontrolApp(ctk.CTk):
                 resp = self.sync.admin_remove_process(self.admin_user, self.admin_pass, name)
             procs = resp.get("processes")
             if isinstance(procs, list):
-                self.state.processes = [str(p).strip().lower() for p in procs]
-                self.state.save()
+                self.app_state.processes = [str(p).strip().lower() for p in procs]
+                self.app_state.save()
             return None
         except SyncError as e:
             return str(e)
@@ -678,7 +678,7 @@ class TcontrolApp(ctk.CTk):
     def quit_app(self):
         self.monitor.stop()
         self.tray.hide()
-        self.state.save()
+        self.app_state.save()
         self.destroy()
 
 
