@@ -1,6 +1,10 @@
-customtkinter>=5.2.2
+customtkinter>=5.2.2,<6
 psutil>=5.9.0
 requests>=2.31.0
 pystray>=0.19.5
 pillow>=10.0.0
-win10toast-persist>=1.2.0; sys_platform == "win32"
+# Notifications Windows : plyer (compatible Python 3.13) + pywin32 (Windows seulement)
+plyer>=2.1.0
+pywin32>=306; sys_platform == "win32"
+# Optionnel (Python <=3.12 seulement) : toasts "riches" à la place de plyer
+# win10toast-persist>=0.10; sys_platform == "win32"
