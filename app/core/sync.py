@@ -26,8 +26,15 @@ class SyncClient:
         payload.setdefault("key", self.cfg.api_key)
         try:
             r = self.session.post(url, json=payload, timeout=8)
+        except requests.exceptions.SSLError as e:
+            raise SyncError(
+                "Certificat SSL invalide (auto-signé ?). Solutions : installe le "
+                "certificat SSL gratuit dans ton panneau InfinityFree (recommandé), "
+                "ou utilise http:// dans l'URL de l'API."
+            ) from e
         except requests.RequestException as e:
-            raise SyncError(f"Réseau injoignable : {e}") from e
+            raise SyncError(f"Réseau injoignable ({e.__class__.__name__}) — "
+                            f"vérifie internet et l'URL du serveur.") from e
         try:
             data = r.json()
         except ValueError as e:
@@ -55,12 +62,13 @@ class SyncClient:
             "version": APP_VERSION,
         })
 
-    def auth(self, username: str, password: str) -> bool:
+    def auth(self, username: str, password: str) -> tuple[bool, str]:
+        """Retourne (ok, erreur_éventuelle)."""
         try:
             self._post("auth.php", {"username": username, "password": password})
-            return True
-        except SyncError:
-            return False
+            return True, ""
+        except SyncError as e:
+            return False, str(e)
 
     def admin_state(self, username: str, password: str) -> dict:
         return self._post("admin.php", {
