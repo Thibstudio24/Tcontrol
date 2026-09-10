@@ -42,7 +42,8 @@ def toast(title: str, message: str, duration: int = 6) -> None:
                 pass
         if _plyer_notification is not None:
             try:
-                _plyer_notification.notify(title=title, message=message, timeout=duration)
+                _plyer_notification.notify(title=title, message=message,
+                                           app_name="Tcontrol", timeout=duration)
             except Exception:
                 pass
 
