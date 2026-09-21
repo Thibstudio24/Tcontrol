@@ -3,7 +3,6 @@
 **Contrôle parental du temps de jeu, synchronisé sur plusieurs PC.**
 
 📦 Repo : [github.com/Thibstudio24/Tcontrol](https://github.com/Thibstudio24/Tcontrol)
-🌐 Site : [tcontrol.thibstudio.rf.gd](https://tcontrol.thibstudio.rf.gd)
 
 Tcontrol est un système en deux parties :
 
